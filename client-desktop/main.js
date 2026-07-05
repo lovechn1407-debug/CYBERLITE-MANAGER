@@ -120,8 +120,8 @@ ipcMain.on('pc-unlock', (event) => {
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.setResizable(true);
   
-  // Shrink window bounds to top-left to fit only the floating timer overlay
-  mainWindow.setBounds({ x: 20, y: 20, width: 260, height: 160 });
+  // Shrink window bounds to top-left to fit the floating timer overlay and snackbar
+  mainWindow.setBounds({ x: 20, y: 20, width: 260, height: 230 });
   mainWindow.setResizable(false);
 
   console.log('Terminal state: UNLOCKED');

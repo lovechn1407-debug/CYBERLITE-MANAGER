@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ref, onValue, update, push } from 'firebase/database';
 import { db } from '../../firebase';
 import FloatingTimer from '../../components/client/FloatingTimer';
-import Modal from '../../components/shared/Modal';
 
 export default function ClientSession() {
   const [searchParams] = useSearchParams();
@@ -98,10 +97,13 @@ export default function ClientSession() {
     return unsub;
   }, [cafeId, pcId, session]);
 
-  // Expand Electron window to fullscreen if admin alert pops up
+  // Auto-dismiss notification snackbar after 5 seconds and mark it read
   useEffect(() => {
-    if (activeAlert && window.electronAPI) {
-      window.electronAPI.lock();
+    if (activeAlert) {
+      const timer = setTimeout(() => {
+        handleDismissAlert();
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [activeAlert]);
 
@@ -212,17 +214,9 @@ export default function ClientSession() {
         read: true
       });
       setActiveAlert(null);
-
-      // Restore window back to small float bounds
-      if (window.electronAPI) {
-        window.electronAPI.unlock();
-      }
     } catch (err) {
       console.error(err);
       setActiveAlert(null);
-      if (window.electronAPI) {
-        window.electronAPI.unlock();
-      }
     }
   };
 
@@ -250,10 +244,10 @@ export default function ClientSession() {
     );
   }
 
-  // Native Electron client view: Render ONLY floating timer overlay + Admin Message alert Modal (Problem 2)
+  // Native Electron client view: Render ONLY floating timer overlay + snackbar toast (Problem 1 & 2)
   if (window.electronAPI) {
     return (
-      <>
+      <div className="electron-hud-container">
         {session && (
           <FloatingTimer 
             endsAt={session.endsAt} 
@@ -263,29 +257,16 @@ export default function ClientSession() {
         )}
         
         {activeAlert && (
-          <div className="modal-overlay" style={{ background: 'rgba(0, 0, 0, 0.85)', zIndex: 10000, display: 'flex' }}>
-            <div className="white-lock-card text-center animate-appear" style={{ padding: '36px', margin: 'auto' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📢</div>
-              <h2 style={{ fontSize: '1.6rem', color: '#0f172a', marginBottom: 8, fontFamily: 'var(--font-display)', fontWeight: 800 }}>MESSAGE FROM ADMIN</h2>
-              <p style={{ color: '#475569', fontSize: '1.05rem', margin: '16px 0', lineHeight: 1.6, fontWeight: 500 }}>
-                {activeAlert.message}
-              </p>
-              <button 
-                type="button" 
-                className="btn btn-primary w-full" 
-                style={{ marginTop: 18, fontSize: '0.95rem', padding: '12px' }}
-                onClick={handleDismissAlert}
-              >
-                GOT IT
-              </button>
-            </div>
+          <div className="toast-snackbar animate-slide-up">
+            <span className="toast-icon">📢</span>
+            <span className="toast-message">{activeAlert.message}</span>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
-  // Browser standard view
+  // Browser standard view: Render fullscreen page + snackbar toast (No annoying blocking popups!)
   return (
     <div className="session-page">
       <div className="session-header">
@@ -344,16 +325,10 @@ export default function ClientSession() {
       )}
 
       {activeAlert && (
-        <Modal show={true} onClose={handleDismissAlert} title="📢 Message from Admin">
-          <div className="text-center" style={{ padding: '10px 0' }}>
-            <p style={{ fontSize: '1.1rem', margin: '10px 0 20px', color: 'var(--text-1)', lineHeight: 1.6 }}>
-              {activeAlert.message}
-            </p>
-            <button type="button" className="btn btn-primary w-full" onClick={handleDismissAlert}>
-              Close Message
-            </button>
-          </div>
-        </Modal>
+        <div className="toast-snackbar browser-toast animate-slide-up">
+          <span className="toast-icon">📢</span>
+          <span className="toast-message">{activeAlert.message}</span>
+        </div>
       )}
     </div>
   );
