@@ -24,6 +24,7 @@ export default function ClientSession() {
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.unlock();
+      document.body.classList.add('electron-session-active');
     }
 
     if (!cafeId || !pcId || !sessionId) {
@@ -68,6 +69,7 @@ export default function ClientSession() {
       unsubPc();
       clearInterval(pingInterval);
       stopScreenSharing();
+      document.body.classList.remove('electron-session-active');
     };
   }, [cafeId, pcId, sessionId]);
 
