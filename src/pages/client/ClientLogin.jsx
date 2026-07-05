@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ref, get, update, set } from 'firebase/database';
+import { ref, get, update, set, onValue, remove } from 'firebase/database';
 import { db } from '../../firebase';
+import Modal from '../../components/shared/Modal';
 
 export default function ClientLogin() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,10 @@ export default function ClientLogin() {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
+  // Settings bypass password from database settings node
+  const [settings, setSettings] = useState(null);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+
   // Handle URL query parameters if present
   useEffect(() => {
     const urlCafe = searchParams.get('cafe');
@@ -29,6 +34,16 @@ export default function ClientLogin() {
       localStorage.setItem('clm_cafe_id', urlCafe);
     }
   }, [searchParams]);
+
+  // Load settings once cafeId is set
+  useEffect(() => {
+    if (cafeId) {
+      const unsub = onValue(ref(db, `cafes/${cafeId}/settings`), (snap) => {
+        setSettings(snap.val() || {});
+      });
+      return unsub;
+    }
+  }, [cafeId]);
 
   // Check registration status
   useEffect(() => {
@@ -187,9 +202,71 @@ export default function ClientLogin() {
     setLoading(false);
   };
 
-  // Reset PC settings
-  const handleResetRegistration = () => {
-    if (window.confirm('Reset this client PC config? You will need to re-register.')) {
+  // Setting panel password verification
+  const handleOpenSettings = () => {
+    const entered = prompt('Enter Admin Settings Bypass Password:');
+    if (entered === null) return;
+    
+    const correctPassword = settings?.bypassPassword || 'admin123';
+    if (entered === correctPassword) {
+      setShowSettingsMenu(true);
+    } else {
+      alert('Incorrect bypass password!');
+    }
+  };
+
+  // Action: Disable PC client (quits app)
+  const handleDisableClient = () => {
+    if (window.confirm('Disable locking client and exit native app?')) {
+      if (window.electronAPI && window.electronAPI.exitApp) {
+        window.electronAPI.exitApp();
+      } else {
+        alert('Exit command triggered (Only available inside native PC client app).');
+      }
+    }
+  };
+
+  // Action: Unlock PC (minimize kiosk)
+  const handleUnlockClient = () => {
+    if (window.confirm('Bypass lock screen and unlock this PC?')) {
+      if (window.electronAPI) {
+        window.electronAPI.unlock();
+        alert('PC Unlocked. Settings closed.');
+        setShowSettingsMenu(false);
+      } else {
+        alert('Unlock command triggered (Only available inside native PC client app).');
+      }
+    }
+  };
+
+  // Action: Rename PC
+  const handleChangePCName = async () => {
+    const newName = prompt('Enter new PC Name:', pcName);
+    if (!newName || !newName.trim()) return;
+
+    try {
+      setLoading(true);
+      await update(ref(db, `cafes/${cafeId}/pcs/${pcId}`), {
+        name: newName.trim()
+      });
+      localStorage.setItem('clm_pc_name', newName.trim());
+      setPcName(newName.trim());
+      alert('PC renamed successfully.');
+    } catch (e) {
+      alert('Rename failed: ' + e.message);
+    }
+    setLoading(false);
+  };
+
+  // Action: Unregister client PC
+  const handleUnregisterPC = async () => {
+    if (window.confirm('Are you sure you want to unregister this PC? This will clear local config and reset PC connection.')) {
+      setLoading(true);
+      try {
+        await remove(ref(db, `cafes/${cafeId}/pcs/${pcId}`));
+      } catch (e) {
+        console.error('Delete failed:', e);
+      }
       localStorage.clear();
       window.location.reload();
     }
@@ -244,10 +321,22 @@ export default function ClientLogin() {
       <div className="client-bg-grid" />
       <div className="client-glow" />
 
-      <div className="pin-card animate-appear">
-        <div className="text-center">
-          <h2 style={{ letterSpacing: '0.05em' }}>{pcName}</h2>
-          <p className="text-muted text-xs mt-1">Terminal locked · Enter login pin to begin</p>
+      {/* Sleek High-Contrast Light Box Redesign (Problem 1) */}
+      <div className="white-lock-card animate-appear">
+        {/* Settings gear icon trigger */}
+        <button 
+          type="button" 
+          className="lock-settings-btn" 
+          onClick={handleOpenSettings}
+          title="Admin Settings"
+        >
+          ⚙️
+        </button>
+
+        <div className="text-center" style={{ marginBottom: 20 }}>
+          <div className="cafe-display-title">{settings?.cafeName || 'CYBERCAFE'}</div>
+          <div className="pc-display-title">{pcName}</div>
+          <p className="lock-subtitle">Terminal Locked · Enter Login PIN Code</p>
         </div>
 
         <div className="pin-display">
@@ -257,7 +346,7 @@ export default function ClientLogin() {
             return (
               <div 
                 key={index} 
-                className={`pin-box ${isFilled ? 'filled' : ''} ${pinError ? 'error' : ''}`}
+                className={`pin-box-white ${isFilled ? 'filled' : ''} ${pinError ? 'error' : ''}`}
               >
                 {isFilled ? '●' : ''}
               </div>
@@ -265,37 +354,79 @@ export default function ClientLogin() {
           })}
         </div>
 
-        <div style={{ minHeight: 24, textAlign: 'center', marginBottom: 12 }}>
+        <div style={{ minHeight: 20, textAlign: 'center', marginBottom: 10 }}>
           {statusMessage && (
-            <p className={pinError ? 'text-red text-sm' : pinSuccess ? 'text-green text-sm' : 'text-cyan text-sm'}>
+            <p className={pinError ? 'text-red text-xs font-bold' : pinSuccess ? 'text-green text-xs font-bold' : 'text-cyan text-xs font-bold'}>
               {statusMessage}
             </p>
           )}
         </div>
 
-        <div className="numpad">
+        <div className="numpad numpad-white">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-            <button key={num} type="button" className="numpad-btn" onClick={() => handleKeyPress(num)} disabled={loading}>
+            <button key={num} type="button" className="numpad-btn-white" onClick={() => handleKeyPress(num)} disabled={loading}>
               {num}
             </button>
           ))}
-          <button type="button" className="numpad-btn del" onClick={handleClear} disabled={loading}>
+          <button type="button" className="numpad-btn-white del" onClick={handleClear} disabled={loading}>
             C
           </button>
-          <button type="button" className="numpad-btn" onClick={() => handleKeyPress(0)} disabled={loading}>
+          <button type="button" className="numpad-btn-white" onClick={() => handleKeyPress(0)} disabled={loading}>
             0
           </button>
-          <button type="button" className="numpad-btn del" onClick={handleDelete} disabled={loading}>
+          <button type="button" className="numpad-btn-white del" onClick={handleDelete} disabled={loading}>
             ⌫
           </button>
         </div>
-
-        <div className="text-center" style={{ marginTop: 24 }}>
-          <button className="btn btn-ghost btn-sm w-full" onClick={handleResetRegistration}>
-            ⚙️ Reset PC settings
-          </button>
-        </div>
       </div>
+
+      {/* Local administrative settings modal */}
+      <Modal show={showSettingsMenu} onClose={() => setShowSettingsMenu(false)} title={`🛠️ Terminal Settings: ${pcName}`}>
+        <div className="section-gap" style={{ padding: '10px 0' }}>
+          <p className="text-muted text-sm">
+            Administrative maintenance functions. Changes will sync to your cafe admin database in real-time.
+          </p>
+
+          <div className="flex flex-col gap-3" style={{ marginTop: 12 }}>
+            <button 
+              type="button" 
+              className="btn btn-ghost w-full justify-between"
+              onClick={handleChangePCName}
+              disabled={loading}
+            >
+              <span>✏️ Change PC Name</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--cyan)' }}>Currently: {pcName}</span>
+            </button>
+
+            <button 
+              type="button" 
+              className="btn btn-orange w-full"
+              onClick={handleUnlockClient}
+            >
+              🔓 Unlock PC Kiosk Mode (Minimize Lock)
+            </button>
+
+            <button 
+              type="button" 
+              className="btn btn-purple w-full"
+              onClick={handleDisableClient}
+            >
+              🔌 Disable client (Exit native locker)
+            </button>
+
+            <div className="divider" style={{ margin: '10px 0' }} />
+
+            <button 
+              type="button" 
+              className="btn btn-red w-full"
+              onClick={handleUnregisterPC}
+              disabled={loading}
+            >
+              ⚠️ Unregister client PC (Reset config)
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

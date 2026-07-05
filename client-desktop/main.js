@@ -88,6 +88,11 @@ app.on('will-quit', () => {
 });
 
 // IPC communication handlers
+ipcMain.on('app-exit', () => {
+  console.log('Native Exit signal received. Quitting app...');
+  app.exit(0);
+});
+
 ipcMain.on('pc-lock', (event) => {
   if (!mainWindow) return;
 

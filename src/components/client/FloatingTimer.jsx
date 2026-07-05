@@ -86,16 +86,16 @@ export default function FloatingTimer({ endsAt, phone, onExpire }) {
         onClick={() => setMinimized(!minimized)}
         title={minimized ? "Expand timer" : "Minimize timer"}
       >
-        {minimized ? '➕' : '➖'}
+        {minimized ? '⤢' : '⤡'}
       </button>
 
       {minimized ? (
-        <span className={`ft-time ${isCritical ? 'critical' : isWarning ? 'warning' : ''}`} style={{ fontSize: '1.1rem' }}>
-          ⏳ {timeString}
+        <span className={`ft-time ${isCritical ? 'critical' : isWarning ? 'warning' : ''}`} style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          ⏱ {timeString}
         </span>
       ) : (
         <>
-          <span className="ft-label">Time Remaining</span>
+          <span className="ft-label">REMAINING TIME</span>
           <span className={`ft-time ${isCritical ? 'critical' : isWarning ? 'warning' : ''}`}>
             {timeString}
           </span>

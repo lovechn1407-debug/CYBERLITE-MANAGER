@@ -195,6 +195,16 @@ export default function ClientSession() {
     );
   }
 
+  if (window.electronAPI) {
+    return session ? (
+      <FloatingTimer 
+        endsAt={session.endsAt} 
+        phone={session.phone} 
+        onExpire={handleSessionEnd} 
+      />
+    ) : null;
+  }
+
   return (
     <div className="session-page">
       <div className="session-header">

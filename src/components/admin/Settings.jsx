@@ -18,6 +18,7 @@ const TIME_SLOTS = [
 export default function Settings({ cafeId, settings }) {
   const [cafeName, setCafeName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [bypassPassword, setBypassPassword] = useState('admin123');
   const [pricePerSlot, setPricePerSlot] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +26,7 @@ export default function Settings({ cafeId, settings }) {
     if (settings) {
       setCafeName(settings.cafeName || '');
       setLogoUrl(settings.logoUrl || '');
+      setBypassPassword(settings.bypassPassword || 'admin123');
       setPricePerSlot(settings.pricePerSlot || {});
     }
   }, [settings]);
@@ -43,6 +45,7 @@ export default function Settings({ cafeId, settings }) {
       await update(ref(db, `cafes/${cafeId}/settings`), {
         cafeName,
         logoUrl,
+        bypassPassword,
         pricePerSlot
       });
       // Also sync cafe name to host record for visual dashboard integration
@@ -81,6 +84,17 @@ export default function Settings({ cafeId, settings }) {
               placeholder="https://example.com/logo.png" 
               value={logoUrl}
               onChange={e => setLogoUrl(e.target.value)}
+            />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Client Lock Screen Bypass Password</label>
+            <input 
+              type="text"
+              className="input" 
+              placeholder="admin123" 
+              value={bypassPassword}
+              onChange={e => setBypassPassword(e.target.value)}
+              required
             />
           </div>
         </div>
